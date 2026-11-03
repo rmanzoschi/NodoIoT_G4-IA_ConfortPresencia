@@ -1,27 +1,23 @@
 # Smart Campus IoT 🌱
 
-Proyecto escolar de Informática que busca monitorear las condiciones ambientales de un aula mediante sensores conectados a un ESP32-C3.
+Sistema de monitoreo ambiental para aulas mediante tecnologías IoT.
 
-### ¿Qué estamos desarrollando?
+Smart Campus IoT es un proyecto escolar desarrollado por estudiantes de 6.º año de Informática A (Grupo G4). Utiliza un ESP32-C3 y distintos sensores para recopilar información sobre las condiciones ambientales de un aula, transmitirla mediante MQTT y visualizarla en un dashboard web.
 
-El prototipo contempla la medición de temperatura, humedad, iluminación, sonido y presencia, además de una lectura relacionada con gases.
+### Tecnologías
 
-Los datos se procesan en el microcontrolador y se busca visualizarlos mediante una pantalla LCD y un panel web, utilizando MQTT para la comunicación.
-
-### Componentes principales
-
-- ESP32-C3 Super Mini
-- DHT22, BH1750 y MQ-135
-- Micrófono INMP441
-- Sensor de presencia HC-SR501
-- Pantalla LCD 16×2 con I²C
-
-### Estado del proyecto
-
-Actualmente estamos trabajando en la integración de los sensores y las comunicaciones. Algunas lecturas todavía necesitan verificarse.
+- ESP32-C3 y sensores ambientales.
+- Arduino / C++.
+- Wi-Fi y MQTT.
+- HTML, CSS y JavaScript.
+- Dashboard web interactivo.
 
 ### Documentación
 
-La documentación completa, la arquitectura, las conexiones y las pruebas se irán organizando en este repositorio.
+Toda la información del proyecto se encuentra organizada en nuestro sitio web, donde se presentan los objetivos, integrantes, planificación, arquitectura, hardware, software, pruebas y resultados.
 
-**Smart Campus IoT · 6.º año · Informática · Grupo G4**
+**🌐 Sitio del proyecto:** próximamente disponible mediante GitHub Pages.
+
+---
+
+**6.º año · Informática A · Grupo G4**
