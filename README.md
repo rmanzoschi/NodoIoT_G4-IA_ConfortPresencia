@@ -5,9 +5,13 @@ Proyecto final de 6.º año · Informática A · Instituto Leonardo Murialdo · 
 ## Accesos rápidos
 
 <p align="center">
-  <a href="https://rmanzoschi.github.io/NodoloT_G4-IA_ConfortPresencia/" target="_blank" rel="noopener noreferrer"><strong>📘 ABRIR DOCUMENTACIÓN</strong></a>
+  <a href="https://rmanzoschi.github.io/NodoIoT_G4-IA_ConfortPresencia/" target="_blank" rel="noopener noreferrer">
+  🚀 ABRIR DOCUMENTACIÓN
+</a>
   &nbsp;&nbsp; | &nbsp;&nbsp;
-  <a href="https://rmanzoschi.github.io/NodoloT_G4-IA_ConfortPresencia/dashboard/" target="_blank" rel="noopener noreferrer"><strong>📊 ABRIR DASHBOARD</strong></a>
+  <a href="https://rmanzoschi.github.io/NodoIoT_G4-IA_ConfortPresencia/dashboard/index.html" target="_blank" rel="noopener noreferrer">
+  📊 ABRIR DASHBOARD
+</a>
 </p>
 
 > Si GitHub Pages todavía no publicó el sitio, activalo en **Settings → Pages**: Deploy from a branch → `main` → `/ (root)` → Save. Esperá a que termine el deploy de GitHub Actions.
