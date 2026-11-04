@@ -1,1 +1,0 @@
-Carpeta reservada para el modelo 3D original del gabinete y sus componentes. Incorporar aquí el archivo del equipo cuando esté listo.
