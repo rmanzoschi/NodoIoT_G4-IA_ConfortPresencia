@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Proyecto Final 6to | Dashboard IoT MQTT</title>
+    
+    <!-- Fuentes modernas -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Librerías Externas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <!-- NUEVA LIBRERÍA: Particles.js para el fondo de nodos -->
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+
+    <style>
+        :root {
+            /* Paleta Dark & Gold */
+            --bg: #050505;
+            --surface: rgba(17, 17, 17, 0.6);
+            --surface-2: #1a1a1a;
+            --surface-hover: #222222;
+            
+            --text: #f5f5f5;
+            --muted: #94a3b8;
+            --muted-2: #64748b;
+            
+            --accent: #FFC500; 
+            --accent-glow: rgba(255, 197, 0, 0.25);
+            
+            --green: #10b981; 
+            --red: #ef4444;   
+            --blue: #3b82f6;  
+            --orange: #f97316;
+            --purple: #a855f7;
+            
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+            
+            --radius: 16px;
+            --radius-sm: 12px;
+            
+            --font-body: 'Inter', sans-serif;
+            --font-heading: 'Sora', sans-serif;
+            
+            --transition: all 0.3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--bg); color: var(--text);
+            font-family: var(--font-body); line-height: 1.6;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 10%, rgba(255, 197, 0, 0.07) 0%, transparent 60%),
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+            background-position: top center, center center, center center;
+        }
+        body.locked { overflow: hidden; }
+
+        a { text-decoration: none; color: inherit; }
+        .container { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 2; }
+
+        /* ==========================================
+           PARTICLES.JS (NUEVO FONDO)
+           ========================================== */
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0; /* Por detrás de todo el contenido */
+            pointer-events: none; /* Para no bloquear clics */
+        }
+
+        /* Capas aseguradas por encima de los nodos */
+        .hero, .section, .site-footer { position: relative; z-index: 2; }
+
+	/* ==========================================
+           ANIMACIÓN DE ARRANQUE (SPLASH SCREEN)
+           ========================================== */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #050505; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+        }
+        .splash-logo-container { position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; }
+        .splash-circuit {
+            position: absolute; width: 100%; height: 100%; border: 2px solid transparent; border-radius: 20px;
+            animation: drawCircuit 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .splash-icon {
+            font-size: 4rem; color: var(--accent); opacity: 0; transform: scale(0.5);
+            filter: drop-shadow(0 0 20px var(--accent-glow));
+            animation: popIcon 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.8s forwards;
+        }
+        .splash-text {
+            margin-top: 1.5rem; font-family: var(--font-heading); font-size: 1.2rem;
+            color: var(--text); opacity: 0; letter-spacing: 2px; text-transform: uppercase;
+            animation: fadeInText 0.5s ease 1.2s forwards;
+        }
+        @keyframes drawCircuit {
+            0% { border-color: transparent; border-top-color: var(--accent); transform: rotate(0deg); }
+            25% { border-right-color: var(--accent); }
+            50% { border-bottom-color: var(--accent); transform: rotate(180deg); }
+            75% { border-left-color: var(--accent); }
+            100% { border-color: var(--accent); transform: rotate(360deg); box-shadow: 0 0 30px var(--accent-glow) inset, 0 0 30px var(--accent-glow); }
+        }
+        @keyframes popIcon { to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeInText { to { opacity: 1; transform: translateY(0); } from { transform: translateY(10px); } }
+
+        /* ==========================================
+           LOGIN MODAL Y ANIMACIÓN OTP
+           ========================================== */
+        .login-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); 
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            z-index: 99999; display: flex; align-items: center; justify-content: center;
+            overflow-y: auto; padding: 1rem;
+            opacity: 1; transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        .login-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        
+        .login-card {
+            background: var(--surface-2); border: 1px solid var(--border);
+            padding: 2.5rem; border-radius: var(--radius); width: 100%; max-width: 420px;
+            margin: auto;
+            text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            transform: translateY(0); transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .login-overlay.hidden .login-card { transform: translateY(50px) scale(0.95); }
+        
+        .login-icon { font-size: 3.5rem; color: var(--accent); margin-bottom: 1rem; filter: drop-shadow(0 0 15px var(--accent-glow)); }
+        .login-title { font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .login-desc { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+        
+        .login-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+        .login-tab { flex: 1; padding: 10px; background: none; border: none; color: var(--muted); cursor: pointer; font-family: var(--font-heading); font-weight: 600; border-bottom: 2px solid transparent; transition: var(--transition); -webkit-tap-highlight-color: transparent;}
+        .login-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        
+        .login-form { display: none; flex-direction: column; gap: 1rem; align-items: center; animation: fadeIn 0.3s ease; }
+        .login-form.active { display: flex; }
+        
+        .input-group { width: 100%; }
+        
+        .otp-container { 
+            position: relative; height: 60px; width: 100%; display: flex; 
+            justify-content: center; align-items: center; gap: 8px; 
+            margin-top: 15px; margin-bottom: 15px;
+        }
+        
+        .slot {
+            position: relative; 
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .otp-box { 
+            width: 44px; height: 56px; background: var(--surface); border: 2px solid var(--border); 
+            border-radius: 10px; font-size: 1.8rem; font-weight: 700; text-align: center; color: var(--text); 
+            outline: none; font-family: 'Consolas', monospace; transition: all 0.3s ease;
+            -webkit-appearance: none; 
+        }
+        .otp-box:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); transform: translateY(-3px); }
+        
+        .slot-1.merge { transform: translateX(110px) scale(0.5); opacity: 0; pointer-events: none; }
+        .slot-2.merge { transform: translateX(65px) scale(0.5); opacity: 0; pointer-events: none; }
+        .slot-3.merge { transform: translateX(20px) scale(0.5); opacity: 0; pointer-events: none; }
+        .slot-4.merge { transform: translateX(-20px) scale(0.5); opacity: 0; pointer-events: none; }
+        .slot-5.merge { transform: translateX(-65px) scale(0.5); opacity: 0; pointer-events: none; }
+        .slot-6.merge { transform: translateX(-110px) scale(0.5); opacity: 0; pointer-events: none; }
+        
+        .otp-success-box {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); border: 2px solid var(--green);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: var(--green); font-size: 2.2rem; opacity: 0; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+        }
+        .otp-success-box.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+        .btn-login { background: var(--accent); color: #000; font-weight: 700; padding: 12px; border: none; border-radius: 8px; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; width: 100%; -webkit-tap-highlight-color: transparent;}
+        .btn-login:hover { background: #e5b100; box-shadow: 0 5px 15px var(--accent-glow); transform: translateY(-2px); }
+        
+        .login-error { color: var(--red); font-size: 0.85rem; display: none; margin-top: -5px; text-align: center; }
+
+        /* ==========================================
+           TOASTS Y SIDEBAR
+           ========================================== */
+        .toast-container { position: fixed; top: 90px; right: 20px; z-index: 9990; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: rgba(17,17,17,0.95); backdrop-filter: blur(10px); border-left: 4px solid var(--accent); color: var(--text); padding: 14px 20px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 12px; animation: slideInRight 0.4s cubic-bezier(0.2,0.8,0.2,1) forwards; max-width: 90vw; }
+        .toast i { font-size: 1.4rem; }
+        .toast.fade-out { animation: fadeOutRight 0.4s ease-in forwards; }
+        
+        @keyframes slideInRight { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+
+        .sidebar { position: fixed; top: 0; right: 0; width: 350px; height: 100vh; background: rgba(10,10,10,0.95); backdrop-filter: blur(20px); border-left: 1px solid var(--border); z-index: 2000; transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.2,0.8,0.2,1); display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.8); max-width: 100vw; }
+        .sidebar.open { transform: translateX(0); }
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-header h3 { font-family: var(--font-heading); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;}
+        .sidebar-header h3 i { color: var(--accent); }
+        .sidebar-actions { display: flex; gap: 15px; }
+        .sidebar-actions button { background: none; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; transition: var(--transition); }
+        .sidebar-actions button:hover { color: var(--text); }
+        .sidebar-actions .btn-trash:hover { color: var(--red); }
+        .sidebar-content { padding: 1.5rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 1rem; }
+        .log-item { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; border-left: 4px solid var(--accent); animation: fadeIn 0.3s ease; }
+        .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.8rem; color: var(--muted); }
+        .log-theme { font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .log-empty { text-align: center; color: var(--muted-2); margin-top: 2rem; font-size: 0.9rem;}
+        .sidebar-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1999; opacity: 0; visibility: hidden; transition: var(--transition); backdrop-filter: blur(2px); }
+        .sidebar-overlay.show { opacity: 1; visibility: visible; }
+
+        /* ==========================================
+           ANIMACIONES GLOBALES
+           ========================================== */
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @keyframes iconPulse { 0% { transform: scale(1); } 50% { transform: scale(1.4); color: var(--accent); text-shadow: 0 0 10px var(--accent-glow); } 100% { transform: scale(1); } }
+        
+        .pulse-anim { animation: iconPulse 0.4s ease-out; }
+        .animate-up { opacity: 0; animation: fadeUp 0.8s cubic-bezier(0.2,0.8,0.2,1) forwards; }
+        .delay-1 { animation-delay: 0.1s; } .delay-2 { animation-delay: 0.2s; } .delay-3 { animation-delay: 0.3s; }
+        .reveal { opacity: 0; transform: translateY(30px) scale(0.98); transition: all 0.8s cubic-bezier(0.2,0.8,0.2,1); }
+        .reveal.active { opacity: 1; transform: translateY(0) scale(1); }
+        
+        .skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--border-hover) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite linear; border-radius: 8px; color: transparent !important; min-width: 80px; display: inline-block; }
+
+        /* ==========================================
+           INTERFAZ PRINCIPAL Y NAVEGACIÓN
+           ========================================== */
+        .site-header { position: fixed; top: 0; left: 0; right: 0; height: 75px; background: rgba(5,5,5,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); z-index: 1000; display: flex; align-items: center; opacity: 0; animation: fadeIn 1s ease-out forwards; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .brand { display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+        .brand:hover { transform: scale(1.1); }
+        .brand i { color: var(--accent); font-size: 2.2rem; }
+        
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; }
+        
+        .nav-link { position: relative; color: var(--muted); font-weight: 500; font-size: 0.95rem; transition: var(--transition); display: flex; align-items: center; gap: 6px; padding-bottom: 4px; text-decoration: none;}
+        .nav-link:hover { color: var(--text); }
+        .nav-link::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0%; height: 2px; background: var(--accent); transition: width 0.3s ease; }
+        .nav-link.active { color: var(--text); }
+        .nav-link.active::after { width: 100%; }
+        
+        .btn-header { background: var(--accent); color: #000; padding: 0.6rem 1.4rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; transition: var(--transition); box-shadow: 0 4px 15px var(--accent-glow); cursor: pointer; display: flex; align-items: center; justify-content: center; border: none; text-decoration: none; gap: 6px; -webkit-tap-highlight-color: transparent;}
+        .btn-header:hover { background: #e5b100; transform: translateY(-3px); box-shadow: 0 6px 20px var(--accent-glow); }
+        
+        .btn-logout { background: var(--surface-2); color: var(--red); border: 1px solid var(--red); box-shadow: none; padding: 0.6rem; }
+        .btn-logout:hover { background: var(--red); color: #000; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+
+        .btn-menu { padding: 0.5rem; font-size: 1.3rem; } 
+        .reloj-digital { font-family: 'Consolas', monospace; color: var(--accent); background: rgba(255,197,0,0.05); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,197,0,0.2); font-size: 0.9rem; letter-spacing: 1px; }
+
+        .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-top: 75px; position: relative; }
+        .hero-inner { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 900px; margin: 0 auto; }
+        .hero-badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 50px; padding: 6px 16px; font-size: 0.85rem; color: var(--muted); margin-bottom: 2rem; background: rgba(255,255,255,0.03); backdrop-filter: blur(4px); transition: var(--transition); }
+        .hero-badge:hover { border-color: var(--accent); background: rgba(255,197,0,0.05); }
+        .badge-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+        .hero-title { font-family: var(--font-heading); font-size: clamp(2.5rem, 6vw, 5rem); line-height: 1.1; font-weight: 800; margin-bottom: 1.5rem; letter-spacing: -1px; }
+        .hero-title .line-1 { display: block; }
+        .hero-title .line-2 { display: block; color: var(--accent); }
+        .hero-desc { font-size: clamp(1rem, 3vw, 1.15rem); color: var(--muted); margin-bottom: 3rem; max-width: 800px; }
+        .hero-desc strong { color: var(--text); }
+        .hero-desc .gold-text { color: var(--accent); font-weight: 600; }
+        
+        .team-members { margin-bottom: 3rem; width: 100%; }
+        .team-title { font-family: var(--font-heading); font-size: 0.85rem; color: var(--muted-2); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1rem; }
+        .team-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+        .team-member { background: var(--surface-2); border: 1px solid var(--border); padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; color: var(--text); display: flex; align-items: center; gap: 8px; transition: var(--transition); cursor: default; }
+        .team-member:hover { border-color: var(--accent); background: rgba(255,197,0,0.05); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .team-member i { color: var(--muted-2); font-size: 1.1rem; transition: var(--transition); }
+        .team-member:hover i { color: var(--accent); }
+        
+        .btn-primary { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #000; padding: 1rem 2.5rem; border-radius: 8px; font-weight: 700; font-size: 1rem; box-shadow: 0 0 20px var(--accent-glow); transition: var(--transition); cursor: pointer; text-decoration: none; border: none;}
+        .btn-primary:hover { background: #e5b100; box-shadow: 0 0 35px var(--accent-glow); transform: translateY(-4px); }
+        .btn-primary i { transition: transform 0.3s ease; margin-right: 8px;}
+        .btn-primary:hover i { transform: translateY(3px); } 
+
+        .section { padding: 6rem 0; border-top: 1px solid var(--border); background: transparent; position: relative; }
+        .section-header { text-align: center; margin-bottom: 4rem; }
+        .section-overline { color: var(--accent); text-transform: uppercase; font-weight: 700; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 0.5rem; display: block; }
+        .section-title { font-family: var(--font-heading); font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; }
+
+        /* DASHBOARD TOOLS Y SWITCH */
+        .dashboard-tools-bar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+        .tools-left { display: flex; flex-direction: column; gap: 0.5rem; }
+        .sys-info { font-family: 'Consolas', monospace; font-size: 0.85rem; color: var(--muted-2); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+        .sys-info span { display: flex; align-items: center; gap: 4px; }
+        .sys-info i { color: var(--accent); }
+
+        .tools-right { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;}
+        
+        /* Toggle Switch */
+        .admin-controls { display: none; align-items: center; gap: 10px; background: var(--surface-2); padding: 6px 12px; border-radius: 50px; border: 1px solid var(--border); }
+        .switch-label { font-size: 0.85rem; font-weight: 600; color: var(--muted); transition: var(--transition); }
+        .switch-label.active { color: var(--accent); }
+        .toggle-switch { position: relative; width: 44px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; border: 1px solid var(--border); }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text); transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--green); border-color: var(--green); }
+        input:checked + .slider:before { transform: translateX(20px); background-color: #000; }
+
+        .status-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); padding: 8px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: 600; transition: var(--transition); }
+        .status-pill.sim { color: var(--accent); border-color: rgba(255, 197, 0, 0.3); background: rgba(255, 197, 0, 0.05); }
+        .status-pill.online { color: var(--green); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05); }
+        .status-pill.error { color: var(--red); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-pill.sim .status-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+        .status-pill.online .status-dot { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+        .status-pill.error .status-dot { background: var(--red); box-shadow: 0 0 8px var(--red); animation: pulse 1s infinite; }
+
+        .btn-tool { background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 500; font-family: var(--font-body); transition: var(--transition); display: flex; align-items: center; gap: 6px; -webkit-tap-highlight-color: transparent;}
+        .btn-tool:hover { background: var(--surface-hover); color: var(--text); border-color: var(--accent); }
+        .btn-tool.btn-reset:hover { border-color: var(--red); color: var(--red); }
+        .btn-tool.muted i { color: var(--orange); }
+
+        /* ARREGLO DE SALTO DE TARJETA */
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+        .sensor-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 165px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .sensor-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100%; background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03), transparent 70%); opacity: 0; transition: var(--transition); pointer-events: none; }
+        .sensor-card:hover { border-color: var(--border-hover); background: var(--surface-hover); transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.4); }
+        .sensor-card:hover::before { opacity: 1; }
+        .sensor-card.critical { border-color: var(--red); background: rgba(239, 68, 68, 0.02); }
+        .sensor-card.critical .card-header i { color: var(--red) !important; }
+        
+        /* NUEVA CLASE PARA LA TARJETA DE CONFORT EXPANDIDA (Gráfico Radar) */
+        @media (min-width: 768px) {
+            .span-2 { grid-column: span 2; }
+        }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; color: var(--muted); margin-bottom: 1.2rem; font-size: 0.95rem; font-weight: 500; }
+        .card-header i { font-size: 1.5rem; transition: transform 0.3s ease; }
+        .sensor-card:hover .card-header i { transform: scale(1.1); }
+        .value-wrapper { display: flex; align-items: baseline; gap: 0.2rem; margin-bottom: 0.2rem;}
+        .value { font-family: var(--font-heading); font-size: 3rem; font-weight: 700; letter-spacing: -1px; display: inline-block; }
+        .unit { font-size: 1.2rem; color: var(--muted-2); }
+        .min-max-info { font-size: 0.75rem; color: var(--muted-2); display: flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 0.8rem; margin-top: 0.5rem; }
+        .min-max-info span strong { color: var(--muted); font-weight: 600; font-family: 'Consolas', monospace;}
+        .card-progress-bar { width: 100%; height: 4px; background: var(--surface-2); border-radius: 4px; margin-top: 0.5rem; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--muted); width: 0%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease; }
+        .status-text { font-size: 1.3rem; font-weight: 600; display: inline-block; }
+        .status-text.active { color: var(--green); }
+        .status-text.inactive { color: var(--muted-2); }
+
+        .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; transition: var(--transition); margin-top: 2rem; width: 100%;}
+        .chart-container:hover { border-color: var(--border-hover); box-shadow: 0 15px 30px rgba(0,0,0,0.3); }
+        .chart-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap;}
+        .chart-header h3 { font-family: var(--font-heading); font-size: 1.2rem; margin-bottom: 0.25rem; }
+        .chart-header p { color: var(--muted); font-size: 0.9rem; }
+
+        /* ==========================================
+           SECCIÓN EQUIPO G4
+           ========================================== */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .team-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+	    backdrop-filter: blur(10px); 
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .team-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            background: var(--surface-hover);
+        }
+        .team-img-placeholder {
+            width: 100px;
+            height: 100px;
+            background: var(--surface-2);
+            border: 2px dashed var(--muted-2);
+            border-radius: var(--radius-sm);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted-2);
+            font-size: 2rem;
+            transition: var(--transition);
+        }
+        .team-card:hover .team-img-placeholder {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .team-name {
+            font-family: var(--font-heading);
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        .team-role {
+            font-size: 0.85rem;
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+        .team-desc {
+            font-size: 0.9rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .site-footer { text-align: center; padding: 3rem 0; border-top: 1px solid var(--border); background: var(--surface); color: var(--muted-2); font-size: 0.9rem; margin-top: 4rem;}
+
+        /* BOTÓN SUBIR PERFECTO, SIEMPRE VISIBLE AL BAJAR */
+        .scroll-top-btn {
+            position: fixed; bottom: 25px; right: 25px; background: var(--surface-2); color: var(--text);
+            width: 45px; height: 45px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; border: 1px solid var(--border); cursor: pointer; opacity: 0; visibility: hidden;
+            transform: translateY(20px); transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 999999; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            text-decoration: none;
+        }
+        .scroll-top-btn.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .scroll-top-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); transform: translateY(-5px); box-shadow: 0 8px 25px var(--accent-glow); }
+
+        /* ==========================================
+           RESPONSIVE MOBILE 📱
+           ========================================== */
+        @media (max-width: 768px) {
+            .nav-links .nav-link { display: none; }
+            .reloj-digital { display: none; }
+            .hero-title { font-size: 2.5rem; }
+            .hero { padding-top: 90px; min-height: auto; padding-bottom: 4rem;}
+            .cards-grid { grid-template-columns: 1fr; }
+            .dashboard-tools-bar { flex-direction: column; align-items: flex-start; }
+            .tools-right { width: 100%; justify-content: space-between; }
+            .btn-tool span { display: none; } 
+            .admin-controls { width: 100%; justify-content: space-between; margin-bottom: 10px;}
+            .chart-container { padding: 1rem; }
+            .login-card { padding: 1.5rem; width: 92%; }
+            .team-grid { grid-template-columns: 1fr; } 
+        }
+
+        /* Ajuste matemático de la OTP Deck para celulares pequeños */
+        @media (max-width: 400px) {
+            .otp-container { gap: 4px; }
+            .otp-box { width: 38px; height: 50px; font-size: 1.5rem; }
+            .otp-success-box { width: 48px; height: 48px; font-size: 1.6rem; }
+            .slot-1.merge { transform: translateX(90px) scale(0.5); }
+            .slot-2.merge { transform: translateX(54px) scale(0.5); }
+            .slot-3.merge { transform: translateX(18px) scale(0.5); }
+            .slot-4.merge { transform: translateX(-18px) scale(0.5); }
+            .slot-5.merge { transform: translateX(-54px) scale(0.5); }
+            .slot-6.merge { transform: translateX(-90px) scale(0.5); }
+        }
+	/* ==========================================
+       	   PROFUNDIDAD 3D PARA TARJETAS
+       	   ========================================== */
+    	.sensor-card, .team-card {
+        	transform-style: preserve-3d;
+    }
+    .card-header, .value-wrapper, .card-progress-bar, .min-max-info,
+    .team-img-placeholder, .team-name, .team-role, .team-desc {
+        transform: translateZ(25px); /* Hace que los elementos floten hacia adelante */
+    }
+
+	/* ==========================================
+           INDICADORES DE TENDENCIA
+           ========================================== */
+    .trend-indicator { font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; opacity: 0; transition: opacity 0.3s; margin-top: 2px; }
+    .trend-up { color: var(--red); }
+    .trend-down { color: var(--green); }
+
+
+	/* ==========================================
+           BOTÓN DE MAIL PARA CADA INTEGRANTE
+           ========================================== */
+        .btn-email {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: auto;
+            background: var(--surface-2);
+            color: var(--accent);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: var(--transition);
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-email:hover {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+</style>	
+
+    </style>
+</head>
+<body class="locked">
+
+    <!-- CONTENEDOR DE LA RED DE NODOS (PARTICLES.JS) -->
+    <div id="particles-js"></div>
+
+	<!-- =======================================================
+         PANTALLA DE SPLASH INICIAL + SCRIPT BLINDADO DE OCULTAMIENTO
+         ======================================================= -->
+    <div id="splash-screen">
+        <div class="splash-logo-container">
+            <div class="splash-circuit"></div>
+            <i class="ph-fill ph-cpu splash-icon"></i>
+        </div>
+        <div class="splash-text">Dashboard G4</div>
+    </div>
+    
+    <script>
+        // BLINDAJE ABSOLUTO: Asegura que la pantalla de carga desaparezca
+        // sin importar si fallan las librerías o si el internet es lento.
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                var splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    setTimeout(function() { splash.style.display = 'none'; }, 800);
+                }
+            }, 2500);
+        });
+        
+        // Timeout de respaldo por si el evento 'load' se queda colgado
+        setTimeout(function() {
+            var splash = document.getElementById('splash-screen');
+            if (splash && splash.style.display !== 'none') {
+                splash.style.opacity = '0';
+                setTimeout(function() { splash.style.display = 'none'; }, 800);
+            }
+        }, 4000);
+    </script>
+
+    <!-- ==========================================
+         PANTALLA DE LOGIN Y ROLES
+         ========================================== -->
+    <div class="login-overlay" id="login-overlay">
+        <div class="login-card">
+            <i class="ph-fill ph-shield-check login-icon"></i>
+            <h2 class="login-title">Acceso al Sistema</h2>
+            <p class="login-desc">Seleccioná tu rol para continuar</p>
+            
+            <div class="login-tabs">
+                <button class="login-tab active" onclick="switchLoginTab('guest')">Invitado</button>
+                <button class="login-tab" onclick="switchLoginTab('admin')">Admin</button>
+            </div>
+            
+            <!-- Formulario Invitado -->
+            <div class="login-form active" id="form-guest">
+                <p style="font-size: 0.9rem; color: var(--muted); text-align: center; margin-bottom: 10px;">
+                    El modo invitado genera <span style="color: var(--accent); font-weight: bold;">datos aleatorios</span>. <br>Ideal para visualizar la interfaz sin afectar los sensores reales.
+                </p>
+                <button class="btn-login" onclick="loginAsGuest()">Entrar a la Demostración <i class="ph-bold ph-arrow-right"></i></button>
+            </div>
+            
+            <!-- Formulario Admin con OTP Deck -->
+            <div class="login-form" id="form-admin">
+                <p style="font-size: 0.9rem; color: var(--muted); text-align: center; margin-bottom: 5px;">
+                    Ingresá el PIN de 6 dígitos para acceder al control del Broker MQTT.
+                </p>
+                
+                <div class="otp-container" id="otp-container">
+                    <div class="slot slot-1"><input type="password" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" onkeyup="manejarOTP(this, event, 0)"></div>
+                    <div class="slot slot-2"><input type="password" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" onkeyup="manejarOTP(this, event, 1)"></div>
+                    <div class="slot slot-3"><input type="password" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" onkeyup="manejarOTP(this, event, 2)"></div>
+                    <div class="slot slot-4"><input type="password" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" onkeyup="manejarOTP(this, event, 3)"></div>
+                    <div class="slot slot-5"><input type="password" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" onkeyup="manejarOTP(this, event, 4)"></div>
+                    <div class="slot slot-6"><input type="password" maxlength="1" class="otp-box" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" onkeyup="manejarOTP(this, event, 5)"></div>
+                    
+                    <div class="otp-success-box" id="otp-success"><i class="ph-bold ph-check"></i></div>
+                </div>
+                <div class="login-error" id="login-error">PIN incorrecto.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL LATERAL (Log de notificaciones) -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <div class="sidebar" id="notification-sidebar">
+        <div class="sidebar-header">
+            <h3><i class="ph-bold ph-list"></i> Registro de Eventos</h3>
+            <div class="sidebar-actions">
+                <button class="btn-trash" id="btn-clear-log" title="Limpiar Historial"><i class="ph-bold ph-trash"></i></button>
+                <button class="btn-close" id="btn-close-sidebar" title="Cerrar Panel"><i class="ph-bold ph-x"></i></button>
+            </div>
+        </div>
+        <div class="sidebar-content" id="sidebar-content">
+            <div class="log-empty" id="log-empty">No hay notificaciones recientes.</div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- BARRA SUPERIOR -->
+    <header class="site-header">
+        <div class="header-inner container">
+            <a href="#" class="brand" title="Inicio"><i class="ph-fill ph-cpu"></i></a>
+            
+            <nav class="nav-links">
+                <span class="reloj-digital" id="reloj-vivo">--:--:--</span>
+                <a href="#inicio" class="nav-link active">Inicio</a>
+                <a href="#dashboard" class="nav-link">Datos en Vivo</a>
+                <a href="#grafico" class="nav-link">Ver Gráfico</a>
+                <a href="#equipo" class="nav-link">Integrantes</a>
+                
+                <button class="btn-header btn-menu" id="btn-menu-log" title="Abrir Registro de Notificaciones">
+                    <i class="ph-bold ph-list"></i>
+                </button>
+                <button class="btn-header btn-logout" id="btn-logout" onclick="cerrarSesion()" title="Cerrar Sesión" style="display: none;">
+                    <i class="ph-bold ph-sign-out"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- PORTADA PRINCIPAL -->
+    <section id="inicio" class="hero">
+        <div class="hero-inner container">
+            <div class="hero-badge animate-up">
+                <span class="badge-dot"></span>
+                <span>Proyecto Final — Instituto Leonardo Murialdo</span>
+            </div>
+            <h1 class="hero-title animate-up delay-1">
+                <span class="line-1">Monitoreo IoT.</span>
+                <span class="line-2">Telemetría Real.</span>
+            </h1>
+            <p class="hero-desc animate-up delay-2">
+                El principal objetivo del proyecto es lograr el <strong class="gold-text">correcto funcionamiento</strong> de los sensores, nodos y programas, compartiendo datos precisos de temperatura, humedad, presencia y confort a un dashboard centralizado.
+            </p>
+            <div class="hero-cta animate-up delay-4">
+                <a href="#dashboard" class="btn-primary">
+                    <i class="ph-bold ph-caret-down"></i> Inicializar Sensores
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- DASHBOARD SECTION -->
+    <section id="dashboard" class="section">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-overline">Telemetría en Vivo</span>
+                <h2 class="section-title">Panel de Control de Sensores</h2>
+            </div>
+
+            <div class="dashboard-tools-bar reveal">
+                <div class="tools-left">
+                    <div class="sys-info">
+                        <span title="Latencia de Red"><i class="ph-bold ph-plugs"></i> Red: <span id="ping-text">-- ms</span></span>
+                        <span title="Última actualización"><i class="ph-bold ph-clock"></i> <span id="timestamp-text">Sincronizando...</span></span>
+                    </div>
+                </div>
+                
+                <div class="tools-right">
+                    <!-- CONTROLES ADMIN: SWITCH MQTT / SIMULACION -->
+                    <div class="admin-controls" id="admin-controls">
+                        <span class="switch-label active" id="lbl-sim">Simulación</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-mqtt">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="switch-label" id="lbl-mqtt">MQTT Local</span>
+                    </div>
+
+                    <div id="status-pill" class="status-pill sim">
+                        <span class="status-dot"></span>
+                        <span id="status-text">Modo Simulación</span>
+                    </div>
+                    
+                    <button class="btn-tool btn-reset" id="btn-reset" title="Limpiar Mín/Máx y Gráfico">
+                        <i class="ph-bold ph-arrows-clockwise"></i> <span>Reset</span>
+                    </button>
+
+                    <button class="btn-tool" id="btn-mute" title="Silenciar Notificaciones Emergentes">
+                        <i class="ph-bold ph-bell" id="icon-mute"></i>
+                    </button>
+                    
+                    <button class="btn-tool" id="btn-fullscreen" title="Modo Pantalla Completa (Kiosco)">
+                        <i class="ph-bold ph-corners-out"></i>
+                    </button>
+                    
+                    <button class="btn-tool" id="btn-export" title="Descargar Historial CSV">
+                        <i class="ph-bold ph-download-simple"></i> <span>CSV</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="cards-grid">
+                <!-- TEMP -->
+                <div class="sensor-card reveal" id="card-temp" style="transition-delay: 0.1s;">
+                    <div class="card-header">
+                        <span>Temperatura</span><i class="ph ph-thermometer" style="color: var(--accent);" id="icon-temp"></i>
+                    </div>
+                    <div class="value-wrapper" style="flex-direction: column; align-items: flex-start;">
+    		    	<div><span class="value skeleton" id="val-temp">--</span><span class="unit">°C</span></div>
+    	 	    	<span class="trend-indicator" id="trend-temp"></span>
+		    </div>
+                    <div class="card-progress-bar"><div class="progress-fill" id="prog-temp" style="background: var(--accent);"></div></div>
+                    <div class="min-max-info"><span>Mín: <strong id="min-temp">--</strong></span><span>Máx: <strong id="max-temp">--</strong></span></div>
+                </div>
+
+                <!-- HUMEDAD -->
+                <div class="sensor-card reveal" id="card-hum" style="transition-delay: 0.2s;">
+                    <div class="card-header">
+                        <span>Humedad relativa</span><i class="ph ph-drop" style="color: var(--blue);" id="icon-hum"></i>
+                    </div>
+                    <div class="value-wrapper" style="flex-direction: column; align-items: flex-start;">
+    		    <div><span class="value skeleton" id="val-hum">--</span><span class="unit">%</span></div>
+    		    <span class="trend-indicator" id="trend-hum"></span>
+		    </div>
+                    <div class="card-progress-bar"><div class="progress-fill" id="prog-hum" style="background: var(--blue);"></div></div>
+                    <div class="min-max-info"><span>Mín: <strong id="min-hum">--</strong></span><span>Máx: <strong id="max-hum">--</strong></span></div>
+                </div>
+
+                <!-- LUZ -->
+                <div class="sensor-card reveal" id="card-luz" style="transition-delay: 0.3s;">
+                    <div class="card-header">
+                        <span>Nivel de Luz</span><i class="ph ph-sun" style="color: var(--accent);" id="icon-luz"></i>
+                    </div>
+                    <div class="value-wrapper" style="flex-direction: column; align-items: flex-start;">
+    		    <div><span class="value skeleton" id="val-luz">--</span><span class="unit">lx</span></div>
+    		    <span class="trend-indicator" id="trend-luz"></span>
+		    </div>
+                    <div class="card-progress-bar"><div class="progress-fill" id="prog-luz" style="background: var(--accent);"></div></div>
+                    <div class="min-max-info"><span>Mín: <strong id="min-luz">--</strong></span><span>Máx: <strong id="max-luz">--</strong></span></div>
+                </div>
+
+                <!-- RUIDO -->
+                <div class="sensor-card reveal" id="card-ruido" style="transition-delay: 0.4s;">
+                    <div class="card-header">
+                        <span>Ruido Acústico</span><i class="ph ph-speaker-high" style="color: var(--orange);" id="icon-ruido"></i>
+                    </div>
+                    <div class="value-wrapper" style="flex-direction: column; align-items: flex-start;">
+    		    <div><span class="value skeleton" id="val-ruido">--</span><span class="unit">dB</span></div>
+    		    <span class="trend-indicator" id="trend-ruido"></span>
+		    </div>
+                    <div class="card-progress-bar"><div class="progress-fill" id="prog-ruido" style="background: var(--orange);"></div></div>
+                    <div class="min-max-info"><span>Mín: <strong id="min-ruido">--</strong></span><span>Máx: <strong id="max-ruido">--</strong></span></div>
+                </div>
+
+                <!-- GAS -->
+                <div class="sensor-card reveal" id="card-gas" style="transition-delay: 0.5s;">
+                    <div class="card-header">
+                        <span>Calidad Aire (Gas)</span><i class="ph ph-wind" style="color: var(--red);" id="icon-gas"></i>
+                    </div>
+                    <div class="value-wrapper" style="flex-direction: column; align-items: flex-start;">
+    		    <div><span class="value skeleton" id="val-gas">--</span><span class="unit">ppm</span></div>
+    		    <span class="trend-indicator" id="trend-gas"></span>
+		    </div>
+                    <div class="card-progress-bar"><div class="progress-fill" id="prog-gas" style="background: var(--red);"></div></div>
+                    <div class="min-max-info"><span>Mín: <strong id="min-gas">--</strong></span><span>Máx: <strong id="max-gas">--</strong></span></div>
+                </div>
+
+                <!-- PRESENCIA -->
+                <div class="sensor-card reveal" style="transition-delay: 0.6s; justify-content: center;">
+                    <div class="card-header">
+                        <span>Sensor PIR (Movimiento)</span><i class="ph ph-user-focus" style="color: var(--purple);" id="icon-pres"></i>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
+                        <i id="icon-presencia" class="ph-fill ph-user-minus" style="font-size: 2.5rem; color: var(--muted-2); transition: all 0.3s;"></i>
+                        <span class="status-text inactive value skeleton" id="text-presencia">Cargando...</span>
+                    </div>
+                </div>
+
+                <!-- CONFORT CON GRÁFICO DE RADAR INTEGRADO -->
+                <div class="sensor-card reveal span-2" style="transition-delay: 0.7s; border-color: var(--accent);">
+                    <div class="card-header">
+                        <span style="color: var(--accent); font-weight: 700;">Índice de Confort Ambiental</span><i class="ph ph-sparkle" style="color: var(--green);" id="icon-conf"></i>
+                    </div>
+                    <div style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-around; height: 100%; gap: 1rem;">
+                        <div style="text-align: center; z-index: 1;">
+                            <span class="status-text value skeleton" id="val-confort" style="font-size: 1.6rem; white-space: nowrap; display: block; overflow: hidden;">--</span>
+                        </div>
+                        <div style="position: relative; height: 120px; width: 120px; flex-grow: 1; min-width: 150px; z-index: 1;">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="grafico" class="chart-container reveal" style="transition-delay: 0.8s;">
+                <div class="chart-header">
+                    <div>
+                        <h3>Registro Histórico Extendido</h3>
+                        <p>Evolución de Temperatura y Humedad.</p>
+                    </div>
+                </div>
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SECCIÓN EQUIPO G4
+         ========================================== -->
+    <section id="equipo" class="section">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-overline">Créditos</span>
+                <h2 class="section-title">Integrantes del Proyecto</h2>
+            </div>
+
+            <div class="team-grid reveal" style="transition-delay: 0.2s;">
+                
+                <!-- Tarjeta 1: Manzo Román -->
+                <div class="team-card">
+                    <img src="https://i.postimg.cc/cCLNvX9b/roman.jpg" alt="Manzo Román" class="team-img-placeholder" style="border:none; object-fit:cover;">
+                    <h3 class="team-name">Manzo Román</h3>
+                    <span class="team-role">Director del Proyecto</span>
+                    <p class="team-desc">Gestión integral del proyecto, coordinación de tareas, ayuda general a todos los roles, control de tiempos y supervisión de los requerimientos para asegurar la entrega del producto final.</p>
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=manzoschiliro@gmail.com" target="_blank" class="btn-email"><i class="ph-bold ph-envelope"></i> Contactar</a>
+                </div>
+
+                <!-- Tarjeta 2: Gavazza Fidel -->
+                <div class="team-card">
+                    <img src="https://i.postimg.cc/BbnGjMYw/fidel.jpg" alt="Gavazza Fidel" class="team-img-placeholder" style="border:none; object-fit:cover;">
+                    <h3 class="team-name">Gavazza Fidel</h3>
+                    <span class="team-role">Hardware & Electrónica</span>
+                    <p class="team-desc">Diseño del circuito y planos, soldadura, integración del ESP32 con la caja estanca y calibración física de los componentes y sensores ambientales.</p>
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=fidelgavazza@gmail.com" target="_blank" class="btn-email"><i class="ph-bold ph-envelope"></i> Contactar</a>
+                </div>
+
+                <!-- Tarjeta 3: Alvarez Benjamín -->
+                <div class="team-card">
+                    <img src="https://i.postimg.cc/gj2PxNS7/benja.jpg" alt="Alvarez Benjamín" class="team-img-placeholder" style="border:none; object-fit:cover;">
+                    <h3 class="team-name">Alvarez Benjamín</h3>
+                    <span class="team-role">Gestor de Documentos</span>
+                    <p class="team-desc">Coordinación y gestión de la documentación técnica del proyecto, elaboración de la carta Gantt para el seguimiento de tiempos y planificación, y diseño del layout de hardware.</p>
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alvarezamendolabenjamin@gmail.com" target="_blank" class="btn-email"><i class="ph-bold ph-envelope"></i> Contactar</a>
+                </div>
+
+                <!-- Tarjeta 4: Tagliaferro Tiziano -->
+                <div class="team-card">
+                    <img src="https://i.postimg.cc/Y0CwvbnT/tizi.jpg" alt="Tagliaferro Tiziano" class="team-img-placeholder" style="border:none; object-fit:cover;">
+                    <h3 class="team-name">Tagliaferro Tiziano</h3>
+                    <span class="team-role">Programador de Redes</span>
+                    <p class="team-desc">Desarrollo e implementación del código en Arduino, gestión del protocolo de comunicación y aseguramiento de la estabilidad y conectividad de la red.</p>
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=tagliaferrotiziano584@gmail.com" target="_blank" class="btn-email"><i class="ph-bold ph-envelope"></i> Contactar</a>
+                </div>
+
+                <!-- Tarjeta 5: Surra Joaquín -->
+                <div class="team-card">
+                    <img src="https://i.postimg.cc/qqvdNjbG/joaco.jpg" alt="Surra Joaquín" class="team-img-placeholder" style="border:none; object-fit:cover;">
+                    <h3 class="team-name">Surra Joaquín</h3>
+                    <span class="team-role">Diseño UI/UX & Frontend</span>
+                    <p class="team-desc">Desarrollo visual del Dashboard web, programación de la interfaz interactiva, diseño responsivo y conexión de los datos MQTT con JavaScript</p>
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=joaquinsurra3@gmail.com" target="_blank" class="btn-email"><i class="ph-bold ph-envelope"></i> Contactar</a>
+                </div>
+
+            </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="container reveal">
+            <p>&copy; 2026 - Instituto Leonardo Murialdo</p>
+            <p>Proyecto Final de 6to Informática "A" - Monitoreo de Confort y Presencia</p>
+        </div>
+    </footer>
+
+    <!-- BOTÓN SUBIR CIRCULAR Y FIXEADO -->
+    <a href="#" id="scrollTopBtn" class="scroll-top-btn" title="Volver arriba">
+        <i class="ph-bold ph-arrow-up"></i>
+    </a>
+
+    <!-- ==========================================
+         LÓGICA JAVASCRIPT GLOBAL
+         ========================================== -->
+    <!-- LIBRERÍA PARA EFECTO 3D (Vanilla-Tilt) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+    <script>
+        // CONFIGURACIÓN BASE 
+        const CONFIG = {
+            MODO_SIMULACION: true, 
+            BROKER_URL: 'ws://192.168.101.94:9001/mqtt', 
+            TOPICS: {
+                temp: "6to_info/A/G4/temperatura", hum: "6to_info/A/G4/humedad",
+                luz: "6to_info/A/G4/luz", ruido: "6to_info/A/G4/ruido",
+                gas: "6to_info/A/G4/gases", pres: "6to_info/A/G4/presencia", conf: "6to_info/A/G4/confort"
+            },
+            INTERVALO_MS: 3000, 
+            MAX_HISTORIAL_GRAFICO: 45 
+        };
+
+        // Variables Globales
+        let isAdmin = false;
+        let simIntervalId = null;
+        let mqttLogInterval = null;
+        let mqttClient = null;
+        let chartInstance = null;
+        let radarChartInstance = null; // Variable del radar
+        
+        let labelsTiempo = [], historialTemp = [], historialHum = [];
+        let registroCSV = []; 
+        let errorActual = false;
+        let notificacionesSilenciadas = false;
+        let lastUpdateTime = Date.now();
+        let isAuthenticating = false;
+
+        let datosActuales = { temperatura: null, humedad: null, luz: null, ruido: null, gas: null, presencia: null, confort: "SIN DATOS" };
+        let simTemp = 22.0, simHum = 45.0;
+
+        let metricas = inicializarMetricas();
+        let alertasEmitidas = { temp: false, hum: false, ruido: false, gas: false };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            inicializarGrafico();
+            configurarBotonesExtras();
+            configurarSidebar();
+            iniciarRelojes();
+            configurarToggleAdmin();
+            configurarBotonSubir(); 
+            configurarNavegacion();
+            
+            // INICIALIZADOR DE PARTICLES.JS (Efecto Nodos Red IoT)
+            if (typeof particlesJS !== "undefined") {
+                particlesJS("particles-js", {
+                    "particles": {
+                        "number": { "value": 50, "density": { "enable": true, "value_area": 800 } },
+                        "color": { "value": "#FFC500" }, /* Color dorado del tema */
+                        "shape": { "type": "circle" },
+                        "opacity": { "value": 0.2, "random": false },
+                        "size": { "value": 3, "random": true },
+                        "line_linked": { "enable": true, "distance": 150, "color": "#FFC500", "opacity": 0.15, "width": 1 },
+                        "move": { "enable": true, "speed": 1.5, "direction": "none", "random": false, "straight": false, "out_mode": "out", "bounce": false }
+                    },
+                    "interactivity": {
+                        "detect_on": "window",
+                        "events": { "onhover": { "enable": true, "mode": "grab" }, "onclick": { "enable": true, "mode": "push" }, "resize": true },
+                        "modes": { "grab": { "distance": 140, "line_linked": { "opacity": 0.5 } }, "push": { "particles_nb": 3 } }
+                    },
+                    "retina_detect": true
+                });
+            }
+
+            // INICIALIZADOR DE VANILLA TILT (Efecto 3D en tarjetas)
+            if (typeof VanillaTilt !== "undefined") {
+                VanillaTilt.init(document.querySelectorAll(".sensor-card, .team-card"), {
+                    max: 6,           // Inclinación máxima en grados
+                    speed: 400,       // Velocidad del efecto
+                    glare: true,      // Activa el reflejo de luz (brillo)
+                    "max-glare": 0.1, // Intensidad del brillo
+                    scale: 1.02       // Se agranda un 2% al pasar el mouse
+                });
+            }
+
+            mostrarSkeletons();
+            document.getElementById('login-overlay').classList.remove('hidden');
+            document.body.classList.add('locked');
+        });
+
+        // ==========================================
+        // LÓGICA DE NAVEGACIÓN
+        // ==========================================
+        function configurarNavegacion() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            window.addEventListener('scroll', () => {
+                let current = '';
+                let scrollY = window.scrollY;
+                
+                navLinks.forEach(link => {
+                    const sectionId = link.getAttribute('href');
+                    if(sectionId && sectionId.startsWith('#')) {
+                        const section = document.querySelector(sectionId);
+                        if (section) {
+                            const rect = section.getBoundingClientRect();
+                            if (rect.top <= window.innerHeight / 2.5) {
+                                current = sectionId;
+                            }
+                        }
+                    }
+                });
+
+                if ((window.innerHeight + Math.round(window.scrollY)) >= document.body.offsetHeight - 50) {
+                    current = '#equipo'; 
+                } else if (current === '#dashboard') {
+                    const graficoEl = document.getElementById('grafico');
+                    if(graficoEl) {
+                        const rectGrafico = graficoEl.getBoundingClientRect();
+                        if (rectGrafico.top <= window.innerHeight / 1.5) {
+                            current = '#grafico';
+                        }
+                    }
+                }
+
+                if (current) {
+                    navLinks.forEach(l => {
+                        l.classList.remove('active');
+                        if (l.getAttribute('href') === current) {
+                            l.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }
+
+        // ==========================================
+        // LÓGICA DE LOGIN (OTP DECK TIKTOK)
+        // ==========================================
+        function switchLoginTab(role) {
+            document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+            
+            if (role === 'guest') {
+                document.querySelectorAll('.login-tab')[0].classList.add('active');
+                document.getElementById('form-guest').classList.add('active');
+            } else {
+                document.querySelectorAll('.login-tab')[1].classList.add('active');
+                document.getElementById('form-admin').classList.add('active');
+                document.querySelectorAll('.otp-box')[0].focus();
+            }
+        }
+
+        function manejarOTP(input, e, index) {
+            if (isAuthenticating) return;
+            const boxes = document.querySelectorAll('.otp-box');
+            
+            input.value = input.value.replace(/[^0-9]/g, '');
+
+            if (e.key === 'Backspace') {
+                if (input.value === "" && index > 0) {
+                    boxes[index - 1].focus();
+                    boxes[index - 1].value = "";
+                } else {
+                    input.value = "";
+                }
+                document.getElementById('login-error').style.display = 'none';
+                return;
+            }
+            
+            if (input.value && index < 5) {
+                boxes[index + 1].focus();
+            }
+
+            let pin = "";
+            let isFull = true;
+            boxes.forEach(b => {
+                pin += b.value;
+                if(!b.value) isFull = false;
+            });
+            
+            if (isFull) {
+                if (pin === "583174") {
+                    isAuthenticating = true;
+                    document.getElementById('login-error').style.display = 'none';
+                    
+                    const slots = document.querySelectorAll('.slot');
+                    slots.forEach((s, i) => {
+                        setTimeout(() => { s.classList.add('merge'); }, i * 45); 
+                    });
+                    
+                    setTimeout(() => {
+                        document.getElementById('otp-success').classList.add('show');
+                        setTimeout(() => { 
+                            loginAsAdminSuccess(); 
+                            isAuthenticating = false;
+                        }, 1200);
+                    }, 400);
+                } else {
+                    document.getElementById('login-error').style.display = 'block';
+                    boxes.forEach(b => b.value = "");
+                    boxes[0].focus();
+                }
+            }
+        }
+
+        function cerrarModalLogin() {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.body.classList.remove('locked');
+            inicializarObserverAnimaciones();
+        }
+
+        function cerrarSesion() {
+            detenerMotorSimulacion();
+            detenerConexionMQTT();
+            mostrarSkeletons();
+            
+            document.getElementById('toggle-mqtt').checked = false;
+            document.getElementById('lbl-mqtt').classList.remove('active');
+            document.getElementById('lbl-sim').classList.add('active');
+            
+            document.querySelectorAll('.otp-box').forEach(b => { b.value = ''; });
+            document.querySelectorAll('.slot').forEach(s => { s.classList.remove('merge'); });
+            document.getElementById('otp-success').classList.remove('show');
+            document.getElementById('login-error').style.display = 'none';
+            switchLoginTab('guest'); 
+            
+            document.getElementById('login-overlay').classList.remove('hidden');
+            document.body.classList.add('locked');
+            document.getElementById('btn-logout').style.display = 'none';
+        }
+
+        function loginAsGuest() {
+            isAdmin = false;
+            document.getElementById('admin-controls').style.display = 'none';
+            document.getElementById('btn-logout').style.display = 'flex'; 
+            
+            cerrarModalLogin();
+            
+            CONFIG.MODO_SIMULACION = true;
+            CONFIG.INTERVALO_MS = 3000;
+            iniciarMotorSimulacion(); 
+        }
+
+        function loginAsAdminSuccess() {
+            isAdmin = true;
+            document.getElementById('admin-controls').style.display = 'flex';
+            document.getElementById('btn-logout').style.display = 'flex';
+            
+            cerrarModalLogin();
+            mostrarToast("Bienvenido, Administrador.", "var(--green)", "ph-shield-check");
+            
+            CONFIG.MODO_SIMULACION = true;
+            CONFIG.INTERVALO_MS = 3000;
+            document.getElementById('toggle-mqtt').checked = false;
+            document.getElementById('lbl-mqtt').classList.remove('active');
+            document.getElementById('lbl-sim').classList.add('active');
+
+            iniciarMotorSimulacion(); 
+        }
+
+        // ==========================================
+        // CONTROL DE MODOS
+        // ==========================================
+        function mostrarSkeletons() {
+            const idsNumericos = ['val-temp', 'val-hum', 'val-luz', 'val-ruido', 'val-gas', 'val-confort'];
+            idsNumericos.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    if(el.dataset.animId) cancelAnimationFrame(parseInt(el.dataset.animId));
+                    el.innerText = '--';
+                    el.style.color = 'var(--text)'; 
+                    el.classList.add('skeleton');
+                }
+            });
+            
+            const pres = document.getElementById('text-presencia');
+            if(pres) { pres.innerText = 'Cargando...'; pres.className = 'status-text inactive value skeleton'; }
+            const presIcon = document.getElementById('icon-presencia');
+            if(presIcon) { presIcon.className = 'ph-fill ph-user-minus'; presIcon.style.color = 'var(--muted-2)'; }
+
+            ['prog-temp', 'prog-hum', 'prog-luz', 'prog-ruido', 'prog-gas'].forEach(id => {
+                const barra = document.getElementById(id);
+                if(barra) barra.style.width = '0%';
+            });
+            
+            ['card-temp', 'card-hum', 'card-luz', 'card-ruido', 'card-gas'].forEach(id => {
+                const card = document.getElementById(id);
+                if(card) card.classList.remove('critical');
+            });
+            
+            // Reseteo del radar a cero
+            if (radarChartInstance) {
+                radarChartInstance.data.datasets[0].data = [0, 0, 0, 0, 0];
+                radarChartInstance.update();
+            }
+            
+            datosActuales = { temperatura: null, humedad: null, luz: null, ruido: null, gas: null, presencia: null, confort: "SIN DATOS" };
+        }
+
+        function configurarToggleAdmin() {
+            const toggle = document.getElementById('toggle-mqtt');
+            const lblSim = document.getElementById('lbl-sim');
+            const lblMqtt = document.getElementById('lbl-mqtt');
+
+            toggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    lblSim.classList.remove('active'); lblMqtt.classList.add('active');
+                    detenerMotorSimulacion();
+                    mostrarSkeletons();
+                    CONFIG.MODO_SIMULACION = false;
+                    CONFIG.INTERVALO_MS = 10000;
+                    iniciarConexionMQTT();
+                } else {
+                    lblMqtt.classList.remove('active'); lblSim.classList.add('active');
+                    detenerConexionMQTT();
+                    mostrarSkeletons();
+                    CONFIG.MODO_SIMULACION = true;
+                    CONFIG.INTERVALO_MS = 3000;
+                    iniciarMotorSimulacion();
+                }
+            });
+        }
+
+        function loopSimulacion() {
+            if (!CONFIG.MODO_SIMULACION) return; 
+            try {
+                datosActuales = generarDatosSimulados();
+                lastUpdateTime = Date.now(); 
+                actualizarPantalla(datosActuales);
+                actualizarGrafico(datosActuales);
+                guardarRegistroParaExcel(datosActuales);
+            } catch (e) {
+                console.error("Error en ciclo de simulación:", e);
+            }
+        }
+
+        function iniciarMotorSimulacion() {
+            detenerMotorSimulacion(); 
+            manejarEstadoConexion(true);
+            CONFIG.MODO_SIMULACION = true;
+            CONFIG.INTERVALO_MS = 3000;
+            
+            loopSimulacion(); 
+            simIntervalId = setInterval(loopSimulacion, CONFIG.INTERVALO_MS);
+        }
+
+        function detenerMotorSimulacion() {
+            if (simIntervalId) {
+                clearInterval(simIntervalId);
+                simIntervalId = null;
+            }
+        }
+
+        // ==========================================
+        // CONEXIÓN MQTT
+        // ==========================================
+        function iniciarConexionMQTT() {
+            detenerMotorSimulacion(); 
+            detenerConexionMQTT();
+            
+            manejarEstadoConexion(false, true); 
+            CONFIG.MODO_SIMULACION = false;
+            CONFIG.INTERVALO_MS = 10000;
+
+            const clientId = 'Dashboard_Murialdo_' + Math.random().toString(16).substr(2, 8);
+            mqttClient = mqtt.connect(CONFIG.BROKER_URL, { clientId: clientId, clean: true });
+
+            mqttClient.on('connect', () => {
+                manejarEstadoConexion(true);
+                mqttClient.subscribe('6to_info/A/G4/#');
+                mostrarToast("Conexión MQTT Local Exitosa", "var(--green)", "ph-wifi-high");
+                
+                mqttLogInterval = setInterval(() => {
+                    if (!errorActual && datosActuales.confort !== "SIN DATOS") {
+                        actualizarGrafico(datosActuales);
+                        guardarRegistroParaExcel(datosActuales);
+                    }
+                }, CONFIG.INTERVALO_MS);
+            });
+
+            mqttClient.on('message', (topic, payload) => {
+                const mensaje = payload.toString();
+                lastUpdateTime = Date.now();
+
+                if (topic === CONFIG.TOPICS.temp) datosActuales.temperatura = parseFloat(mensaje);
+                else if (topic === CONFIG.TOPICS.hum) datosActuales.humedad = parseFloat(mensaje);
+                else if (topic === CONFIG.TOPICS.luz) datosActuales.luz = parseFloat(mensaje);
+                else if (topic === CONFIG.TOPICS.ruido) datosActuales.ruido = parseFloat(mensaje);
+                else if (topic === CONFIG.TOPICS.gas) datosActuales.gas = parseInt(mensaje);
+                else if (topic === CONFIG.TOPICS.pres) datosActuales.presencia = (mensaje === 'SI' || mensaje === '1' || mensaje.toLowerCase() === 'true');
+                else if (topic === CONFIG.TOPICS.conf) datosActuales.confort = mensaje;
+
+                if(datosActuales.temperatura !== null) {
+                    actualizarPantalla(datosActuales);
+                }
+            });
+
+            mqttClient.on('error', () => manejarEstadoConexion(false));
+            mqttClient.on('close', () => manejarEstadoConexion(false));
+        }
+
+        function detenerConexionMQTT() {
+            if (mqttClient) { mqttClient.end(); mqttClient = null; }
+            if (mqttLogInterval) { clearInterval(mqttLogInterval); mqttLogInterval = null; }
+        }
+
+        // ==========================================
+        // HERRAMIENTAS Y SIDEBAR
+        // ==========================================
+        function configurarSidebar() {
+            const btnMenu = document.getElementById('btn-menu-log');
+            const btnClose = document.getElementById('btn-close-sidebar');
+            const sidebar = document.getElementById('notification-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const btnClear = document.getElementById('btn-clear-log');
+            const content = document.getElementById('sidebar-content');
+
+            function toggleSidebar() {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('show');
+            }
+
+            btnMenu.addEventListener('click', toggleSidebar);
+            btnClose.addEventListener('click', toggleSidebar);
+            overlay.addEventListener('click', toggleSidebar);
+
+            btnClear.addEventListener('click', () => {
+                content.innerHTML = '<div class="log-empty" id="log-empty">No hay notificaciones recientes.</div>';
+                mostrarToast("Historial borrado.", "var(--accent)", "ph-trash");
+            });
+
+            const btnMute = document.getElementById('btn-mute');
+            const iconMute = document.getElementById('icon-mute');
+            btnMute.addEventListener('click', () => {
+                notificacionesSilenciadas = !notificacionesSilenciadas;
+                if (notificacionesSilenciadas) {
+                    btnMute.classList.add('muted'); iconMute.className = 'ph-bold ph-bell-slash';
+                    mostrarToast("Alertas silenciadas.", "var(--orange)", "ph-bell-slash");
+                } else {
+                    btnMute.classList.remove('muted'); iconMute.className = 'ph-bold ph-bell';
+                    mostrarToast("Alertas activadas.", "var(--green)", "ph-bell-ringing");
+                }
+            });
+        }
+
+        function agregarAlHistorialLog(tema, mensaje, color) {
+            const content = document.getElementById('sidebar-content');
+            const emptyMsg = document.getElementById('log-empty');
+            if (emptyMsg) emptyMsg.remove(); 
+
+            const hora = new Date().toLocaleTimeString();
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            item.style.borderLeftColor = color;
+            item.innerHTML = `
+                <div class="log-header">
+                    <span class="log-theme" style="color: ${color};">${tema}</span>
+                    <span class="log-time"><i class="ph ph-clock"></i> ${hora}</span>
+                </div>
+                <div class="log-msg">${mensaje}</div>
+            `;
+            content.prepend(item);
+        }
+
+        function mostrarToast(mensaje, color, icono = "ph-info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.borderLeftColor = color;
+            toast.innerHTML = `<i class="${icono}" style="color: ${color};"></i> <span>${mensaje}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 400); }, 4000);
+        }
+
+        // ==========================================
+        // ACTUALIZACIÓN VISUAL
+        // ==========================================
+
+        function actualizarTendencia(id, actual, anterior, unidad = "") {
+            const el = document.getElementById(id);
+            if (!el || actual === null || anterior == null) return; 
+            const diff = actual - anterior;
+            if (Math.abs(diff) < 0.1) { el.style.opacity = '0'; return; }
+            
+            el.style.opacity = '1';
+            // Formateo condicional: si es gas, luz o ruido (que son números grandes), no mostramos decimales en la flecha.
+            let formateado = (id.includes('temp') || id.includes('hum')) ? diff.toFixed(1) : Math.round(diff);
+            
+            if (diff > 0) { el.innerHTML = `<i class="ph-bold ph-trend-up"></i> +${formateado}${unidad}`; el.className = 'trend-indicator trend-up'; } 
+            else { el.innerHTML = `<i class="ph-bold ph-trend-down"></i> ${formateado}${unidad}`; el.className = 'trend-indicator trend-down'; }
+        }
+
+        function actualizarPantalla(datos) {
+            // Inicializar memoria de datos anteriores si no existe
+            window.datosAnteriores = window.datosAnteriores || {};
+            
+            if (datos.temperatura !== null) {
+                document.getElementById('val-temp').classList.remove('skeleton');
+                animarNumeroSeguro('val-temp', datos.temperatura, 1);
+                actualizarBarraColorida('prog-temp', datos.temperatura, 18, 28, 50);
+                actualizarMinMax('temp', datos.temperatura, 1);
+                
+                // Tendencia Temp
+                actualizarTendencia('trend-temp', datos.temperatura, window.datosAnteriores.temperatura, '°');
+                window.datosAnteriores.temperatura = datos.temperatura;
+
+                evaluarCriticoYLog('card-temp', 'temp', datos.temperatura < 15 || datos.temperatura > 32, "Peligro Térmico", "Temperatura");
+                pulsarIcono('icon-temp');
+            }
+
+            if (datos.humedad !== null) {
+                document.getElementById('val-hum').classList.remove('skeleton');
+                animarNumeroSeguro('val-hum', datos.humedad, 1);
+                actualizarBarraColorida('prog-hum', datos.humedad, 30, 70, 100);
+                actualizarMinMax('hum', datos.humedad, 1);
+                
+                // Tendencia Humedad
+                actualizarTendencia('trend-hum', datos.humedad, window.datosAnteriores.humedad, '%');
+                window.datosAnteriores.humedad = datos.humedad;
+
+                evaluarCriticoYLog('card-hum', 'hum', datos.humedad < 20 || datos.humedad > 80, "Humedad Extrema", "Humedad");
+                pulsarIcono('icon-hum');
+            }
+
+            if (datos.luz !== null) {
+                document.getElementById('val-luz').classList.remove('skeleton');
+                animarNumeroSeguro('val-luz', datos.luz, 0);
+                actualizarBarraColorida('prog-luz', datos.luz, 300, 2000, 1000);
+                actualizarMinMax('luz', datos.luz, 0);
+                
+                // Tendencia Luz
+                actualizarTendencia('trend-luz', datos.luz, window.datosAnteriores.luz, 'lx');
+                window.datosAnteriores.luz = datos.luz;
+
+                pulsarIcono('icon-luz');
+            }
+
+            if (datos.ruido !== null) {
+                document.getElementById('val-ruido').classList.remove('skeleton');
+                animarNumeroSeguro('val-ruido', datos.ruido, 0);
+                actualizarBarraColorida('prog-ruido', datos.ruido, 0, 60, 120);
+                actualizarMinMax('ruido', datos.ruido, 0);
+                
+                // Tendencia Ruido
+                actualizarTendencia('trend-ruido', datos.ruido, window.datosAnteriores.ruido, 'dB');
+                window.datosAnteriores.ruido = datos.ruido;
+
+                evaluarCriticoYLog('card-ruido', 'ruido', datos.ruido > 75, "Nivel de Ruido Excesivo", "Ruido");
+                pulsarIcono('icon-ruido');
+            }
+
+            if (datos.gas !== null) {
+                document.getElementById('val-gas').classList.remove('skeleton');
+                animarNumeroSeguro('val-gas', datos.gas, 0);
+                actualizarBarraColorida('prog-gas', datos.gas, 0, 700, 2000);
+                actualizarMinMax('gas', datos.gas, 0);
+                
+                // Tendencia Gas
+                actualizarTendencia('trend-gas', datos.gas, window.datosAnteriores.gas, 'ppm');
+                window.datosAnteriores.gas = datos.gas;
+
+                evaluarCriticoYLog('card-gas', 'gas', datos.gas > 800, "Aire Contaminado (Gases Altos)", "Sensor Gas");
+                pulsarIcono('icon-gas');
+            }
+
+            if (datos.presencia !== null) {
+                const elPresencia = document.getElementById('text-presencia');
+                const iconPresencia = document.getElementById('icon-presencia');
+                
+                elPresencia.classList.remove('skeleton');
+                elPresencia.innerText = datos.presencia ? 'Detectada' : 'Sin Detectar';
+                if (datos.presencia) {
+                    iconPresencia.className = 'ph-fill ph-user-check'; iconPresencia.style.color = 'var(--green)'; iconPresencia.style.transform = 'scale(1.2)';
+                    elPresencia.className = 'status-text active value';
+                } else {
+                    iconPresencia.className = 'ph-fill ph-user-minus'; iconPresencia.style.color = 'var(--muted-2)'; iconPresencia.style.transform = 'scale(1)';
+                    elPresencia.className = 'status-text inactive value';
+                }
+                pulsarIcono('icon-pres');
+            }
+
+            if (datos.confort !== "SIN DATOS" && datos.confort !== null) {
+                const elConfort = document.getElementById('val-confort');
+                elConfort.classList.remove('skeleton');
+                elConfort.innerText = datos.confort;
+                
+                const confStr = (datos.confort || "").toLowerCase();
+                if (confStr.includes('optimo') || confStr.includes('buen') || confStr.includes('confortable')) elConfort.style.color = 'var(--green)';
+                else if (confStr.includes('regular')) elConfort.style.color = 'var(--accent)';
+                else elConfort.style.color = 'var(--red)';
+                pulsarIcono('icon-conf');
+            }
+        }
+
+        function actualizarMinMax(clave, valor, decimales) {
+            if (valor === 0 && metricas[clave].min === 999) return;
+            if (valor < metricas[clave].min) metricas[clave].min = valor;
+            if (valor > metricas[clave].max) metricas[clave].max = valor;
+            document.getElementById(`min-${clave}`).innerText = metricas[clave].min.toFixed(decimales);
+            document.getElementById(`max-${clave}`).innerText = metricas[clave].max.toFixed(decimales);
+        }
+
+        function evaluarCriticoYLog(idCard, clave, esCritico, mensajeAlerta, tema) {
+            const card = document.getElementById(idCard);
+            if (esCritico) {
+                card.classList.add('critical');
+                if (!alertasEmitidas[clave]) { 
+                    agregarAlHistorialLog(tema, mensajeAlerta, "var(--red)"); 
+                    if(!notificacionesSilenciadas) mostrarToast(mensajeAlerta, "var(--red)", "ph-warning-octagon"); 
+                    alertasEmitidas[clave] = true;
+                }
+            } else {
+                card.classList.remove('critical');
+                alertasEmitidas[clave] = false; 
+            }
+        }
+
+        function manejarEstadoConexion(conectado, isConnecting = false) {
+            const pill = document.getElementById('status-pill');
+            const text = document.getElementById('status-text');
+
+            if (isConnecting) {
+                pill.className = 'status-pill sim';
+                text.innerText = 'Conectando a MQTT...';
+                document.getElementById('ping-text').innerText = 'Espere...';
+                return;
+            }
+
+            if (!conectado) {
+                pill.className = 'status-pill error';
+                text.innerText = 'Broker Desconectado';
+                document.getElementById('ping-text').innerText = 'Error';
+                if(!errorActual) {
+                    agregarAlHistorialLog("Red", "Conexión perdida con el Broker", "var(--orange)");
+                    if(!notificacionesSilenciadas) mostrarToast("Conexión perdida", "var(--orange)", "ph-plugs");
+                }
+                errorActual = true;
+                return;
+            }
+
+            if (errorActual) {
+                agregarAlHistorialLog("Red", "Conexión recuperada exitosamente", "var(--green)");
+                errorActual = false;
+            }
+
+            if (CONFIG.MODO_SIMULACION) {
+                pill.className = 'status-pill sim';
+                text.innerText = isAdmin ? 'Admin (Simulación)' : 'Invitado (Simulación)';
+                document.getElementById('ping-text').innerText = 'Local';
+            } else {
+                pill.className = 'status-pill online';
+                text.innerText = 'Conectado a MQTT Local';
+                document.getElementById('ping-text').innerText = 'En Línea';
+            }
+        }
+
+        // Animación suave de números 
+        function animarNumeroSeguro(id, valorFinal, decimales) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            
+            let textoActual = el.innerText.trim();
+            if (textoActual === '--' || isNaN(parseFloat(textoActual))) {
+                textoActual = '0'; 
+            }
+            
+            const valorInicial = parseFloat(textoActual) || 0;
+            if (valorInicial === valorFinal) return; 
+
+            const duracion = 500; 
+            const startTime = performance.now();
+
+            function step(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duracion, 1);
+                const easeOut = progress * (2 - progress); 
+                const actual = valorInicial + (valorFinal - valorInicial) * easeOut;
+                
+                el.innerText = actual.toFixed(decimales);
+                
+                if (progress < 1) {
+                    el.dataset.animId = requestAnimationFrame(step);
+                } else {
+                    el.innerText = valorFinal.toFixed(decimales);
+                }
+            }
+
+            if (el.dataset.animId) cancelAnimationFrame(parseInt(el.dataset.animId));
+            el.dataset.animId = requestAnimationFrame(step);
+        }
+
+        function actualizarBarraColorida(idBarra, valor, minIdeal, maxIdeal, maxTotal) {
+            const barra = document.getElementById(idBarra);
+            let pct = (valor / maxTotal) * 100;
+            barra.style.width = `${Math.min(Math.max(pct, 0), 100)}%`;
+            if (valor < minIdeal || valor > maxIdeal) {
+                barra.style.backgroundColor = (valor > maxIdeal) ? "var(--red)" : "var(--blue)";
+                if (idBarra === 'prog-luz' || idBarra === 'prog-ruido') barra.style.backgroundColor = "var(--orange)";
+            } else {
+                barra.style.backgroundColor = "var(--green)";
+            }
+        }
+
+        // ==========================================
+        // CHART.JS Y EXCEL CON GRÁFICO DE RADAR
+        // ==========================================
+        function inicializarGrafico() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const radarCtx = document.getElementById('radarChart').getContext('2d'); // Contexto del Radar
+            const style = getComputedStyle(document.body);
+            const cGold = style.getPropertyValue('--accent').trim() || '#FFC500';
+            const cBlue = style.getPropertyValue('--blue').trim() || '#3b82f6';
+            
+            // Gráfico de líneas (Existente)
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelsTiempo,
+                    datasets: [
+                        { label: 'Temperatura (°C)', data: historialTemp, borderColor: cGold, backgroundColor: 'rgba(255, 197, 0, 0.05)', borderWidth: 3, pointRadius: 2, tension: 0.4, fill: true },
+                        { label: 'Humedad (%)', data: historialHum, borderColor: cBlue, backgroundColor: 'rgba(59, 130, 246, 0.05)', borderWidth: 3, pointRadius: 2, tension: 0.4, fill: true }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { 
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { maxTicksLimit: 8, color: '#94a3b8' } }
+                    },
+                    plugins: { legend: { labels: { color: '#94a3b8', font: { family: "'Inter', sans-serif" } } } },
+                    animation: { duration: 400, easing: 'easeOutQuart' } 
+                }
+            });
+
+            // NUEVO: Gráfico de Radar para el Confort
+            radarChartInstance = new Chart(radarCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Temp', 'Hum', 'Luz', 'Ruido', 'Gas'],
+                    datasets: [{
+                        label: 'Nivel Ambiental',
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderColor: '#10b981',
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            pointLabels: { color: '#94a3b8', font: { family: "'Inter', sans-serif", size: 9 } },
+                            ticks: { display: false, min: 0, max: 100 }
+                        }
+                    },
+                    plugins: { legend: { display: false } },
+                    animation: { duration: 400, easing: 'easeOutQuart' }
+                }
+            });
+        }
+
+        function actualizarGrafico(datos) {
+            const horaTexto = new Date().toLocaleTimeString();
+            
+            // Actualizar Gráfico Principal
+            chartInstance.data.labels.push(horaTexto);
+            chartInstance.data.datasets[0].data.push(datos.temperatura);
+            chartInstance.data.datasets[1].data.push(datos.humedad);
+
+            if (chartInstance.data.labels.length > CONFIG.MAX_HISTORIAL_GRAFICO) {
+                chartInstance.data.labels.shift(); 
+                chartInstance.data.datasets[0].data.shift(); 
+                chartInstance.data.datasets[1].data.shift();
+            }
+            chartInstance.update(); 
+
+            // Actualizar Gráfico de Radar
+            if (radarChartInstance) {
+                // Normalizamos los valores a un máximo de 100 para que el radar se dibuje parejo
+                const nTemp = Math.min((datos.temperatura / 45) * 100, 100);
+                const nHum = datos.humedad; // ya es porcentaje
+                const nLuz = Math.min((datos.luz / 1000) * 100, 100);
+                const nRuido = Math.min((datos.ruido / 100) * 100, 100);
+                const nGas = Math.min((datos.gas / 1000) * 100, 100);
+
+                radarChartInstance.data.datasets[0].data = [nTemp, nHum, nLuz, nRuido, nGas];
+
+                // Cambiamos el color de la telaraña según el confort (Verde, Amarillo o Rojo)
+                let color = '#10b981'; let bg = 'rgba(16, 185, 129, 0.2)';
+                if(datos.confort.toLowerCase().includes('regular')) { color = '#FFC500'; bg = 'rgba(255, 197, 0, 0.2)'; }
+                else if(datos.confort.toLowerCase().includes('malo')) { color = '#ef4444'; bg = 'rgba(239, 68, 68, 0.2)'; }
+
+                radarChartInstance.data.datasets[0].borderColor = color;
+                radarChartInstance.data.datasets[0].pointBackgroundColor = color;
+                radarChartInstance.data.datasets[0].backgroundColor = bg;
+                
+                radarChartInstance.update();
+            }
+        }
+
+        function guardarRegistroParaExcel(datos) {
+            const ahora = new Date();
+            registroCSV.push({
+                tiempo: ahora.toLocaleDateString() + ' ' + ahora.toLocaleTimeString(),
+                temp: datos.temperatura, hum: datos.humedad, luz: datos.luz,
+                ruido: datos.ruido, gas: datos.gas, presencia: datos.presencia ? 'Sí' : 'No', confort: datos.confort
+            });
+            if (registroCSV.length > 720) registroCSV.shift();
+        }
+
+        // ==========================================
+        // UTILIDADES VARIAS
+        // ==========================================
+        function pulsarIcono(idIcono) {
+            const icon = document.getElementById(idIcono);
+            if(icon) {
+                icon.classList.remove('pulse-anim');
+                void icon.offsetWidth; 
+                icon.classList.add('pulse-anim');
+            }
+        }
+
+        function inicializarMetricas() {
+            return { temp: { min: 999, max: -999 }, hum: { min: 999, max: -999 }, luz: { min: 99999, max: -1 }, ruido: { min: 999, max: -1 }, gas: { min: 99999, max: -1 } };
+        }
+
+        function configurarBotonesExtras() {
+            const btnFull = document.getElementById('btn-fullscreen');
+            btnFull.addEventListener('click', () => {
+                if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); btnFull.innerHTML = '<i class="ph-bold ph-corners-in"></i>'; } 
+                else { document.exitFullscreen(); btnFull.innerHTML = '<i class="ph-bold ph-corners-out"></i>'; }
+            });
+
+            document.getElementById('btn-export').addEventListener('click', () => {
+                if (registroCSV.length === 0) { mostrarToast("Aún no hay datos para exportar.", "var(--accent)", "ph-warning-circle"); return; }
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+                csvContent += "Fecha y Hora;Temperatura (C);Humedad (%);Luz (lx);Ruido (dB);Gas (ppm);Presencia;Confort\n";
+                registroCSV.forEach(row => {
+                    csvContent += `${row.tiempo};${row.temp.toString().replace('.', ',')};${row.hum.toString().replace('.', ',')};${row.luz};${row.ruido};${row.gas};${row.presencia};${row.confort}\n`;
+                });
+                const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent));
+                link.setAttribute("download", `Reporte_Murialdo_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                mostrarToast("Excel descargado.", "var(--green)", "ph-download-simple");
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                metricas = inicializarMetricas();
+                Object.keys(metricas).forEach(k => { document.getElementById(`min-${k}`).innerText = '--'; document.getElementById(`max-${k}`).innerText = '--'; });
+                
+                chartInstance.data.labels = [];
+                chartInstance.data.datasets[0].data = [];
+                chartInstance.data.datasets[1].data = [];
+                chartInstance.update();
+                
+                if (radarChartInstance) {
+                    radarChartInstance.data.datasets[0].data = [0, 0, 0, 0, 0];
+                    radarChartInstance.update();
+                }
+
+                registroCSV = []; 
+                mostrarToast("Sesión reiniciada.", "var(--accent)", "ph-arrows-clockwise");
+            });
+        }
+
+        function iniciarRelojes() {
+            setInterval(() => {
+                document.getElementById('reloj-vivo').innerText = new Date().toLocaleTimeString();
+                const segs = Math.floor((Date.now() - lastUpdateTime) / 1000);
+                document.getElementById('timestamp-text').innerText = segs > 60 ? `hace ${Math.floor(segs/60)} min` : `hace ${segs} seg`;
+            }, 1000);
+        }
+
+        function configurarBotonSubir() {
+            const btn = document.getElementById('scrollTopBtn');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 100) btn.classList.add('show');
+                else btn.classList.remove('show');
+            });
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+
+        function inicializarObserverAnimaciones() {
+            const observer = new IntersectionObserver((entries) => { entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        }
+
+        function generarDatosSimulados() {
+            if (simTemp === 0) simTemp = 22.0; if (simHum === 0) simHum = 45.0;
+            simTemp += (Math.random() - 0.5) * 1.5; simHum += (Math.random() - 0.5) * 3.0;
+            simTemp = Math.min(36, Math.max(12, simTemp)); simHum = Math.min(95, Math.max(20, simHum));
+            let simLuz = Math.floor(Math.random() * (900 - 100) + 100); 
+            let simRuido = Math.floor(Math.random() * (85 - 30) + 30);  if(Math.random() > 0.9) simRuido = 80; 
+            let simGas = Math.floor(Math.random() * (1000 - 300) + 300); if(Math.random() > 0.95) simGas = 850; 
+            let presenciaFalsa = Math.random() > 0.5; 
+            let pC = 0;
+            if (simTemp >= 19 && simTemp <= 26) pC += 2; else if (simTemp > 30 || simTemp < 15) pC -= 2;
+            if (simHum >= 40 && simHum <= 60) pC += 2; else if (simHum > 70 || simHum < 30) pC -= 2;
+            if (simLuz >= 300) pC += 1; else pC -= 1;
+            if (simRuido <= 50) pC += 2; else if (simRuido > 75) pC -= 2;
+            if (simGas <= 500) pC += 2; else if (simGas > 800) pC -= 2;
+            let estC = 'Confortable'; if (pC < 0) estC = 'Malo'; else if (pC < 5) estC = 'Regular';
+            return { temperatura: simTemp, humedad: simHum, luz: simLuz, ruido: simRuido, gas: simGas, presencia: presenciaFalsa, confort: estC };
+        }
+    </script>
+</body>
+</html>
