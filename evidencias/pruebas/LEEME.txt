@@ -1,1 +1,0 @@
-Agregar capturas y registros reales de pruebas, con fecha, condiciones, resultado y observaciones.
